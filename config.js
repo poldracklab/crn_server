@@ -2,7 +2,8 @@ export default {
 	port: 8765,
 	headers: {
 		'Access-Control-Allow-Origin': '*',
-		'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PUT, PATCH, DELETE'
+		'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PUT, PATCH, DELETE',
+		'Access-Control-Allow-Headers': 'content-type'
 	},
 	scitran: {
 		baseURL: 'https://scitran.sqm.io/api/',
