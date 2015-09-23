@@ -3,7 +3,7 @@ export default {
 	headers: {
 		'Access-Control-Allow-Origin': '*',
 		'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PUT, PATCH, DELETE',
-		'Access-Control-Allow-Headers': 'content-type'
+		'Access-Control-Allow-Headers': 'content-type, Authorization'
 	},
 	scitran: {
 		baseURL: 'https://scitran.sqm.io/api/',
