@@ -8,5 +8,8 @@ export default {
 	scitran: {
 		baseURL: 'https://scitran.sqm.io/api/',
 		secret: 'a6c1f717eb4b438b80d6baa2866c2dc8',
+	},
+	mongo: {
+		url: 'mongodb://localhost:27017/crn'
 	}
 };
