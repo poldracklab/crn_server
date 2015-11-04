@@ -11,8 +11,10 @@ export default {
 	},
 	agave: {
 		url: 'https://api.tacc.utexas.edu/',
-		username: 'crn_plab',
-		password: ''
+		username: 'oesteban',
+		password: 'a.long.SECURE.pass.for.Agave.2015',
+		consumerKey: 'hDNOenVzCrzTr5EIwu3QkESm9fUa',
+		consumerSecret: 'rYeS6jv9LQvdLMNhifgcrcNDlhka',
 	},
 	mongo: {
 		url: 'mongodb://localhost:27017/crn'
