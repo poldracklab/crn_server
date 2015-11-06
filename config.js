@@ -13,8 +13,8 @@ export default {
 		url: 'https://api.tacc.utexas.edu/',
 		username: 'oesteban',
 		password: 'a.long.SECURE.pass.for.Agave.2015',
-		consumerKey: 'idOx0c3bZfbXUDOSIFyTEYlTHmQa',//'1HKuXW2Jk6N9VlFeCSLWePyDCCwa',//'hDNOenVzCrzTr5EIwu3QkESm9fUa',
-		consumerSecret: 'GJTgOGBg6I4yuue4zBz7TpPVKCQa',//'P6y7riVw0AKSjmiTBh4aO3MYJ70a',//'rYeS6jv9LQvdLMNhifgcrcNDlhka',
+		consumerKey: 'L2Tx8fIfcJQLAdTfRnM7W1HP4fka',/*'idOx0c3bZfbXUDOSIFyTEYlTHmQa','1HKuXW2Jk6N9VlFeCSLWePyDCCwa','hDNOenVzCrzTr5EIwu3QkESm9fUa',*/
+		consumerSecret: '5UMZGFmDrx3554jtPUf1Y6vsRPca',/*'GJTgOGBg6I4yuue4zBz7TpPVKCQa','P6y7riVw0AKSjmiTBh4aO3MYJ70a','rYeS6jv9LQvdLMNhifgcrcNDlhka',*/
 	},
 	mongo: {
 		url: 'mongodb://localhost:27017/crn'
