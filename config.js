@@ -11,10 +11,11 @@ export default {
 	},
 	agave: {
 		url: 'https://api.tacc.utexas.edu/',
-		username: 'oesteban',
-		password: 'a.long.SECURE.pass.for.Agave.2015',
-		consumerKey: 'oLXIXaMGDijyFbDGX_Tpp0UqVg0a',
-		consumerSecret: 'I2fNAnPLw6V0rHLoMeAJysf8PToa'
+		username: 'crn_plab',
+		password: 'Eid5Dreacmyt.necGien5',
+		clientName: 'squishy-cli',
+		consumerKey: 'U64V24sPJu9Am63bmlTA1mqnhGQa',
+		consumerSecret: 'MVNM4dRcK9DSjNR5yFuvdp0MAhUa'
 	},
 	mongo: {
 		url: 'mongodb://localhost:27017/crn'
