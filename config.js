@@ -1,12 +1,12 @@
 export default {
-	port: 8765,
+	port: 8111,
 	headers: {
 		'Access-Control-Allow-Origin': '*',
 		'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PUT, PATCH, DELETE',
 		'Access-Control-Allow-Headers': 'content-type, Authorization'
 	},
 	scitran: {
-		url: 'https://dev-openfmri.tacc.utexas.edu/api/',//'https://scitran.sqm.io/api/',
+		url: 'http://dev-openfmri.tacc.utexas.edu:8110/api/',//'https://scitran.sqm.io/api/',
 		secret: 'a6c1f717eb4b438b80d6baa2866c2dc8',
 	},
 	agave: {
