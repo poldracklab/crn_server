@@ -1,4 +1,5 @@
 export default {
+	url: 'http://dev-openfmri.tacc.utexas.edu',
 	port: 8111,
 	headers: {
 		'Access-Control-Allow-Origin': '*',
