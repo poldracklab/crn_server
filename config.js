@@ -1,14 +1,15 @@
 export default {
-	url: 'http://dev-openfmri.tacc.utexas.edu',
-	port: 8111,
-	headers: {
-		'Access-Control-Allow-Origin': '*',
-		'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PUT, PATCH, DELETE',
-		'Access-Control-Allow-Headers': 'content-type, Authorization'
+	"url": "http://dev-openfmri.tacc.utexas.edu",
+	"port": 8111,
+	"headers": {
+		"Access-Control-Allow-Origin": "*",
+		"Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, PATCH, DELETE",
+		"Access-Control-Allow-Headers": "content-type, Authorization"
 	},
-	scitran: {
-		url: 'http://dev-openfmri.tacc.utexas.edu:8110/api/',//'https://scitran.sqm.io/api/',
-		secret: 'a6c1f717eb4b438b80d6baa2866c2dc8',
+	"scitran": {
+		"url": "http://localhost:8110/api/",//"https://scitran.sqm.io/api/",
+		"secret": "a6c1f717eb4b438b80d6baa2866c2dc8",
+		"fileStore": "/Users/zack/Projects/crn/scitran/persistent/data/"
 	},
 	"agave": {
 		"url": "https://api.tacc.utexas.edu/",
