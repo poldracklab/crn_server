@@ -149,15 +149,21 @@ let handlers = {
         //check for subject list and make decision regarding job execution (i.e. one job or multiple, parallel jobs)
         if(params.subjectList) {
             handlers.submitParallelJobs(params, (err, data) => {
+                // need to handle error
                 handlers.updateJobOnSubmitSuccessful(jobId, data);
             });
         } else {
             handlers.submitSingleJob(params, (err, data) => {
+                // need to handle error
                 handlers.updateJobOnSubmitSuccessful(jobId, data);
             });
         }
     },
 
+    /**
+     * Update mongo job on successful job submission to AWS Batch.
+     * returns no return. Batch job start is happening after response has been send to client
+     */
     updateJobOnSubmitSuccessful(jobId, batchIds) {
         c.crn.jobs.updateOne({_id: jobId}, {
             $set:{
@@ -173,6 +179,11 @@ let handlers = {
         });
     },
 
+    /**
+     * Submit parallel jobs to AWS batch
+     * for jobs with a subjectList parameter, we want to start all those jobs in parallel
+     * submits all jobs in parallel and callsback with an array of the AWS batch ids for all the jobs
+     */
     submitParallelJobs(jobParams, callback) {
         let job = (params, cb) => {
             aws.batch.sdk.submitJob(params, (err, data) => {
@@ -192,6 +203,11 @@ let handlers = {
         async.parallel(jobs, callback);
     },
 
+    /**
+     * Submits a single job to AWS Batch
+     * for jobs without a subjectList parameter we are running all subjects in one job.
+     * callsback with a single element array containing the AWS batch ID.
+     */
     submitSingleJob(params, callback) {
         aws.batch.sdk.submitJob(params, (err, data) => {
             if(err) {cb(err);}
@@ -199,7 +215,7 @@ let handlers = {
         });
     },
 
-        /**
+    /**
      * GET Job
      */
     getJob(req, res) {
@@ -209,6 +225,7 @@ let handlers = {
             let status = job.analysis.status;
             let analysisId = job.analysis.analysisId;
             let jobs = job.analysis.jobs;
+            let totalJobs = jobs.length; //total number of jobs in the analysis
             // check if job is already known to be completed
             // there could be a scenario where we are polling before the AWS batch job has been setup. !analysisId check handles this.
             if ((status === 'SUCCEEDED' && job.results && job.results.length > 0) || status === 'FAILED' || !jobs) {
@@ -218,9 +235,20 @@ let handlers = {
                     jobs: jobs
                 };
                 aws.batch.sdk.describeJobs(params, (err, resp) => {
-                    let analysis = resp.jobs[0];
+                    let analysis = {};
+                    let statusArray = resp.jobs.map((job) => {
+                        return job.status;
+                    });
+                    //if every status is either succeeded or failed, all jobs have completed.
+                    let finished = statusArray.every((status) => {
+                        return status === 'SUCCEEDED' || status === 'FAILED';
+                    });
+
+                    analysis.status = !finished ? "RUNNING" : "COMPLETING";
                     // check status
-                    if(analysis.status === 'SUCCEEDED' || analysis.status === 'FAILED'){
+                    if(finished){
+                        //Check if any jobs failed, if so analysis failed, else succeeded
+                        let finalStatus = statusArray.some((status)=>{ return status === 'FAILED';}) ? 'FAILED' : "SUCCEEDED";
                         let params = {
                             Bucket: 'openneuro.outputs',
                             Prefix: '24fd3a7f24ce267eb488ec5afe5c98c1' || job.snapshotId
@@ -235,7 +263,7 @@ let handlers = {
                             });
                             c.crn.jobs.updateOne({_id: ObjectID(jobId)}, {
                                 $set:{
-                                    'analysis.status': analysis.status,
+                                    'analysis.status': finalStatus,
                                     results: results
                                 }
                             });
