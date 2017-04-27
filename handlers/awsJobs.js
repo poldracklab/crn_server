@@ -287,19 +287,31 @@ let handlers = {
                 // begin streaming archive
                 archive.pipe(res);
 
-                aws.s3.listObjectsV2(params, (err, data) {
+                aws.s3.listObjectsV2(params, (err, data) => {
                     let keysArray = [];
                     data.Contents.forEach((obj) => {
                         keysArray.push(obj.Key;
-
                     });
-                    
+
+                    async.eachSeries(keysArray, (key, cb) => {
+                        let objParams = {
+                            Bucket: 'openneuro.outputs',
+                            Key: key
+                        };
+                        aws.s3.getObject(objParams, (err, response) => {
+                            //append to zip
+                            archive.append(res.body, {name: 'test.txt'});
+                            cb();
+                        });
+                    }, () => {
+                        archive.finalize();
+                    });
                 });
 
                 // recurse outputs
-                getOutputs(archiveName, job[type], type, archive, () => {
-                    archive.finalize();
-                });
+                // getOutputs(archiveName, job[type], type, archive, () => {
+                //     archive.finalize();
+                // });
             });
 
         }

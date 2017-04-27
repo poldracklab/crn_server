@@ -317,6 +317,18 @@ let handlers = {
      * GET Download Ticket
      */
     getDownloadTicket(req, res, next) {
+            // form ticket
+            let ticket = {
+                type: 'download',
+                userId: req.user,
+                jobId: jobId,
+                fileName: 'all',
+                filePath: filePath,
+                created: new Date()
+            };
+
+            res.send(ticket);
+/*
         let jobId    = req.params.jobId,
             filePath = req.query.filePath,
             fileName = filePath.split('/')[filePath.split('/').length - 1];
@@ -346,7 +358,7 @@ let handlers = {
                     res.send(ticket);
                 });
             });
-        });
+        });*/
     },
 
     /**

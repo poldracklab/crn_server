@@ -177,7 +177,7 @@ const routes = [
         middleware: [
             auth.ticket
         ],
-        handler: jobs.getFile
+        handler: jobs.downloadAllS3
     }
 
 ];
