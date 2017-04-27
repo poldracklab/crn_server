@@ -6,6 +6,7 @@ import crypto  from 'crypto';
 import uuid    from 'uuid';
 import mongo         from '../libs/mongo';
 import {ObjectID}    from 'mongodb';
+import archiver      from 'archiver';
 
 let c = mongo.collections;
 
@@ -248,6 +249,101 @@ let handlers = {
                 });
             }
         });
+    },
+
+    /**
+     * GET File
+     * listObjects to find everything in the s3 bucket for a given job
+     * stream all files in series(?) to zip 
+     */
+    downloadAllS3(req, res) {
+        let jobId = req.params.jobId;
+
+        const path = req.ticket.filePath;
+        if (path === 'all-results' || path === 'all-logs') {
+
+            const type = path.replace('all-', '');
+
+            // initialize archive
+            let archive = archiver('zip');
+
+            // log archiving errors
+            archive.on('error', (err) => {
+                console.log('archiving error - job: ' + jobId);
+                console.log(err);
+            });
+
+            c.crn.jobs.findOne({jobId}, {}, (err, job) => {
+                let archiveName = job.datasetLabel + '__' + job.appId + '__' + type;
+                //params to list objects for a job
+                let params = {
+                    Bucket: 'openneuro.outputs',
+                    Prefix: '24fd3a7f24ce267eb488ec5afe5c98c1' || job.snapshotId
+                };
+
+                // set archive name
+                res.attachment(archiveName + '.zip');
+
+                // begin streaming archive
+                archive.pipe(res);
+
+                aws.s3.listObjectsV2(params, (err, data) {
+                    let keysArray = [];
+                    data.Contents.forEach((obj) => {
+                        keysArray.push(obj.Key;
+
+                    });
+                    
+                });
+
+                // recurse outputs
+                getOutputs(archiveName, job[type], type, archive, () => {
+                    archive.finalize();
+                });
+            });
+
+        }
+
+        // recurse through tree outputs
+        function getOutputs(archiveName, results, type, archive, callback) {
+            const baseDir = type === 'results' ? '/out/' : '/log/';
+            async.eachSeries(results, (result, cb) => {
+                let outputName = result.path.replace(baseDir, archiveName + '/');
+                if (result.type === 'file') {
+                    let path = 'jobs/v2/' + jobId + '/outputs/media' + result.path;
+                    agave.api.getPath(path, (err, res) => {
+                        let body = res.body;
+                        if (body && body.status && body.status === 'error') {
+                            // error from AGAVE
+                            console.log('Error downloading - ', path);
+                            console.log(body);
+                        } else {
+                            // stringify JSON
+                            if (typeof body === 'object' && !Buffer.isBuffer(body)) {
+                                body = JSON.stringify(body);
+                            }
+                            // stringify numbers
+                            if (typeof body === 'number') {
+                                body = body.toString();
+                            }
+                            // handle empty files
+                            if (typeof body === 'undefined') {
+                                body = '';
+                            }
+                            // append file to archive
+                            archive.append(body, {name: outputName});
+                        }
+                        cb();
+                    });
+                } else if (result.type === 'dir') {
+                    archive.append(null, {name: outputName + '/'});
+                    getOutputs(archiveName, result.children, type, archive, cb);
+                } else {
+                    cb();
+                }
+            }, callback);
+        }
+
     },
 
     /**
