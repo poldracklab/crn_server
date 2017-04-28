@@ -7,6 +7,8 @@ import uuid    from 'uuid';
 import mongo         from '../libs/mongo';
 import {ObjectID}    from 'mongodb';
 import archiver      from 'archiver';
+import config from '../config';
+import async from 'async'
 
 let c = mongo.collections;
 
@@ -183,8 +185,11 @@ let handlers = {
                         let finalStatus = statusArray.some((status)=>{ return status === 'FAILED';}) ? 'FAILED' : 'SUCCEEDED';
                         let params = {
                             Bucket: 'openneuro.outputs',
-                            Prefix: job.snapshotId + '/' + job.analysis.analysisId
+                            Prefix: job.datasetHash + '/' + job.analysis.analysisId
                         };
+                        console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                        console.log(params.Prefix);
+                        console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                         aws.s3.sdk.listObjectsV2(params, (err, data) => {
                             let results = [];
                             data.Contents.forEach((obj) => {
@@ -262,7 +267,7 @@ let handlers = {
     downloadAllS3(req, res) {
         let jobId = req.params.jobId;
 
-        const path = req.ticket.filePath;
+        const path = 'all-results'; //req.ticket.filePath;
         if (path === 'all-results' || path === 'all-logs') {
 
             const type = path.replace('all-', '');
@@ -276,12 +281,12 @@ let handlers = {
                 console.log(err);
             });
 
-            c.crn.jobs.findOne({jobId}, {}, (err, job) => {
+            c.crn.jobs.findOne({_id: ObjectID(jobId)}, {}, (err, job) => {
                 let archiveName = job.datasetLabel + '__' + job.appId + '__' + type;
                 //params to list objects for a job
                 let params = {
-                    Bucket: 'openneuro.outputs',
-                    Prefix: '24fd3a7f24ce267eb488ec5afe5c98c1' || job.snapshotId
+                    Bucket: config.aws.s3.analysisBucket,
+                    Prefix: job.datasetHash + job.analysis.analysisId
                 };
 
                 // set archive name
@@ -290,20 +295,24 @@ let handlers = {
                 // begin streaming archive
                 archive.pipe(res);
 
-                aws.s3.listObjectsV2(params, (err, data) => {
+                aws.s3.sdk.listObjectsV2(params, (err, data) => {
                     let keysArray = [];
+                    console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                    console.log(data);
                     data.Contents.forEach((obj) => {
-                        keysArray.push(obj.Key;
+                        keysArray.push(obj.Key);
                     });
 
                     async.eachSeries(keysArray, (key, cb) => {
                         let objParams = {
-                            Bucket: 'openneuro.outputs',
+                            Bucket: config.aws.s3.analysisBucket,
                             Key: key
                         };
-                        aws.s3.getObject(objParams, (err, response) => {
+                        aws.s3.sdk.getObject(objParams, (err, response) => {
                             //append to zip
-                            archive.append(res.body, {name: 'test.txt'});
+                            console.log(response);
+                            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                            archive.append(response.Body, {name: 'test.txt'});
                             cb();
                         });
                     }, () => {
@@ -316,47 +325,6 @@ let handlers = {
                 //     archive.finalize();
                 // });
             });
-
-        }
-
-        // recurse through tree outputs
-        function getOutputs(archiveName, results, type, archive, callback) {
-            const baseDir = type === 'results' ? '/out/' : '/log/';
-            async.eachSeries(results, (result, cb) => {
-                let outputName = result.path.replace(baseDir, archiveName + '/');
-                if (result.type === 'file') {
-                    let path = 'jobs/v2/' + jobId + '/outputs/media' + result.path;
-                    agave.api.getPath(path, (err, res) => {
-                        let body = res.body;
-                        if (body && body.status && body.status === 'error') {
-                            // error from AGAVE
-                            console.log('Error downloading - ', path);
-                            console.log(body);
-                        } else {
-                            // stringify JSON
-                            if (typeof body === 'object' && !Buffer.isBuffer(body)) {
-                                body = JSON.stringify(body);
-                            }
-                            // stringify numbers
-                            if (typeof body === 'number') {
-                                body = body.toString();
-                            }
-                            // handle empty files
-                            if (typeof body === 'undefined') {
-                                body = '';
-                            }
-                            // append file to archive
-                            archive.append(body, {name: outputName});
-                        }
-                        cb();
-                    });
-                } else if (result.type === 'dir') {
-                    archive.append(null, {name: outputName + '/'});
-                    getOutputs(archiveName, result.children, type, archive, cb);
-                } else {
-                    cb();
-                }
-            }, callback);
         }
 
     },
