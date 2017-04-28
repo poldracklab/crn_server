@@ -78,19 +78,6 @@ let handlers = {
     submitJob(req, res, next) {
         let job = req.body;
 
-        const batchJobParams = {
-            jobDefinition: job.jobDefinition,
-            jobName:       job.jobName,
-            jobQueue:      'bids-queue',
-            parameters:    job.parameters,
-            containerOverrides:{
-                environment: [{
-                    name: 'BIDS_SNAPSHOT_ID',
-                    value: '24fd3a7f24ce267eb488ec5afe5c98c1' || job.snapshotId
-                }]
-            }
-        };
-
         job.uploadSnapshotComplete = !!job.uploadSnapshotComplete;
         job.analysis = {
             analysisId: uuid.v4(),
@@ -133,6 +120,22 @@ let handlers = {
 
                     // TODO - handle situation where upload to S3 fails
                     aws.s3.uploadSnapshot(hash, () => {
+                        const batchJobParams = {
+                            jobDefinition: job.jobDefinition,
+                            jobName:       job.jobName,
+                            jobQueue:      'bids-queue',
+                            parameters:    job.parameters,
+                            containerOverrides:{
+                                environment: [{
+                                    name: 'BIDS_SNAPSHOT_ID',
+                                    value: hash
+                                }, {
+                                    name: 'BIDS_ANALYSIS_ID',
+                                    value: job.analysis.analysisId
+                                }]
+                            }
+                        };
+
                         aws.batch.startBatchJob(batchJobParams, mongoJob.insertedId);
                     });
                 });
@@ -180,7 +183,7 @@ let handlers = {
                         let finalStatus = statusArray.some((status)=>{ return status === 'FAILED';}) ? 'FAILED' : 'SUCCEEDED';
                         let params = {
                             Bucket: 'openneuro.outputs',
-                            Prefix: '24fd3a7f24ce267eb488ec5afe5c98c1' || job.snapshotId
+                            Prefix: job.snapshotId + '/' + job.analysis.analysisId
                         };
                         aws.s3.sdk.listObjectsV2(params, (err, data) => {
                             let results = [];
