@@ -1,3 +1,4 @@
+/*eslint no-console: ["error", { allow: ["log"] }] */
 // dependencies ------------------------------------------------------------
 
 import aws     from '../libs/aws';
@@ -8,7 +9,7 @@ import mongo         from '../libs/mongo';
 import {ObjectID}    from 'mongodb';
 import archiver      from 'archiver';
 import config from '../config';
-import async from 'async'
+import async from 'async';
 
 let c = mongo.collections;
 
