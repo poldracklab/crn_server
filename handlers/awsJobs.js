@@ -175,7 +175,13 @@ let handlers = {
                             }
                         };
 
-                        aws.batch.startBatchJob(batchJobParams, mongoJob.insertedId);
+                        let jobSubmitted = aws.batch.startBatchJob(batchJobParams, mongoJob.insertedId);
+                        jobSubmitted.then(
+                            () => {},
+                            (err) => {
+                                next(err);
+                            }
+                        );
                     });
                 });
             });
