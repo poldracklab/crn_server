@@ -42,36 +42,43 @@ export default (aws) => {
 
         /**
          * Start AWS Batch Job
-         * starts an aws batch job
-         * returns no return. Batch job start is happening after response has been send to client
+         * Returns a promise that succeeds with the queued job id.
          */
         startBatchJob(batchJob, jobId) {
-            c.crn.jobDefinitions.findOne({jobDefinitionArn: batchJob.jobDefinition}, {}, (err, jobDef) => {
-                let analysisLevels = jobDef.analysisLevels;
-                async.reduce(analysisLevels, [], (deps, level, callback) => {
-                    let submitter;
-                    let levelName = level.value;
+            let promise = new Promise((resolve, reject) => {
+                c.crn.jobDefinitions.findOne({jobDefinitionArn: batchJob.jobDefinition}, {}, (err, jobDef) => {
+                    let analysisLevels = jobDef.analysisLevels;
+                    async.reduce(analysisLevels, [], (deps, level, callback) => {
+                        let submitter;
+                        let levelName = level.value;
 
-                    // Pass analysis level to the BIDS app container
-                    let env = batchJob.containerOverrides.environment;
-                    env.push({name: 'BIDS_ANALYSIS_LEVEL', value: levelName});
+                        // Pass analysis level to the BIDS app container
+                        let env = batchJob.containerOverrides.environment;
+                        env.push({name: 'BIDS_ANALYSIS_LEVEL', value: levelName});
 
-                    if (levelName.search('participant') != -1) {
-                        // Run participant level jobs in parallel
-                        submitter = this.submitParallelJobs.bind(this);
-                    } else {
-                        // Other levels are serial
-                        submitter = this.submitSingleJob.bind(this);
-                    }
-                    submitter(batchJob, deps, (err, batchJobIds) => {
-                        // Submit the next set of jobs including the previous as deps
-                        callback(null, deps.concat(batchJobIds));
+                        if (levelName.search('participant') != -1) {
+                            // Run participant level jobs in parallel
+                            submitter = this.submitParallelJobs.bind(this);
+                        } else {
+                            // Other levels are serial
+                            submitter = this.submitSingleJob.bind(this);
+                        }
+                        submitter(batchJob, deps, (err, batchJobIds) => {
+                            // Submit the next set of jobs including the previous as deps
+                            if (err) {
+                                reject(err);
+                            } else {
+                                callback(null, deps.concat(batchJobIds));
+                            }
+                        });
+                    }, (err, batchJobIds) => {
+                        // When all jobs are submitted, update job state with the last set
+                        this._updateJobOnSubmitSuccessful(jobId, batchJobIds);
+                        resolve(batchJobIds);
                     });
-                }, (err, batchJobIds) => {
-                    // When all jobs are submitted, update job state with the last set
-                    this._updateJobOnSubmitSuccessful(jobId, batchJobIds);
                 });
             });
+            return promise;
         },
 
         /**
@@ -106,18 +113,27 @@ export default (aws) => {
                 });
             };
 
-            let jobs = [];
-
-            batchJob.parameters.participant_label.forEach((subject) => {
-                let subjectBatchJob = JSON.parse(JSON.stringify(batchJob));
-                subjectBatchJob.dependsOn = _depsObjects(deps);
-                // Reduce participant_label to a single subject
-                subjectBatchJob.parameters.participant_label = [subject];
-                this._addJobArguments(subjectBatchJob);
-                delete subjectBatchJob.parameters;
-                jobs.push(job.bind(this, subjectBatchJob));
-            });
-            async.parallel(jobs, callback);
+            if (batchJob.parameters.hasOwnProperty('participant_label') &&
+                batchJob.parameters.participant_label instanceof Array &&
+                batchJob.parameters.participant_label.length > 0) {
+                let jobs = [];
+                console.log(batchJob.parameters.participant_label);
+                batchJob.parameters.participant_label.forEach((subject) => {
+                    let subjectBatchJob = JSON.parse(JSON.stringify(batchJob));
+                    subjectBatchJob.dependsOn = _depsObjects(deps);
+                    // Reduce participant_label to a single subject
+                    subjectBatchJob.parameters.participant_label = [subject];
+                    this._addJobArguments(subjectBatchJob);
+                    delete subjectBatchJob.parameters;
+                    jobs.push(job.bind(this, subjectBatchJob));
+                });
+                async.parallel(jobs, callback);
+            } else {
+                // Parallel job with no participants passed in
+                let err = new Error('Parallel job submitted with no subjects specified');
+                err.http_code = 422;
+                callback(err);
+            }
         },
 
         /**
@@ -143,10 +159,17 @@ export default (aws) => {
          * {key: ...value}
          */
         _prepareArguments(parameters) {
-            return Object.keys(parameters).map((key) => {
-                let parameter = parameters[key];
+            return Object.keys(parameters).filter((key) => {
+                // Skip empty arguments
+                let value = parameters[key];
+                if (value instanceof Array) {
+                    return value.length > 0;
+                } else {
+                    return parameters[key];
+                }
+            }).map((key) => {
                 let argument = '--' + key + ' ';
-                let value = parameter || '';
+                let value = parameters[key];
                 if (value instanceof Array) {
                     value = value.join(' ');
                 }
